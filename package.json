@@ -10,6 +10,7 @@
   "author": "Michael Levy (@malevy)",
   "license": "MIT",
   "dependencies": {
-    "collection-json": "^0.2.1"
+    "collection-json": "^0.2.1",
+    "denodeify": "^1.2.1"
   }
 }

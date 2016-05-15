@@ -5,14 +5,15 @@
 			"name": "Launch",
 			"type": "node",
 			"request": "launch",
-			"program": "${workspaceRoot}/built/app.js",
+			"program": "${workspaceRoot}/src/app.js",
 			"stopOnEntry": false,
 			"args": [],
 			"cwd": "${workspaceRoot}",
 			"preLaunchTask": null,
 			"runtimeExecutable": null,
 			"runtimeArgs": [
-				"--nolazy"
+				"--nolazy",
+				"--harmony"
 			],
 			"env": {
 				"NODE_ENV": "development"

@@ -1,8 +1,0 @@
-{
-  "name": "maze-agent-bot",
-  "version": false,
-  "dependencies": {},
-  "ambientDependencies": {
-    "node": "registry:dt/node#4.0.0+20160412142033"
-  }
-}
