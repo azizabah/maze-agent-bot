@@ -7,6 +7,7 @@ const denodeify = require("denodeify");
 const cjClient = require("collection-json");
 const cj = denodeify(cjClient);
 const util = require("util");
+const NodeCache = require("node-cache");
 
 function Maze() {
     this.name = "";
@@ -23,6 +24,13 @@ function Cell() {
     this.href="";
     this.doors = new Array();
 }
+
+const cache = new NodeCache({
+    stdTTL: 8*60*60,
+    checkPeriod: 60*60,
+    errorOnMissing: false,
+    useClones: false
+});
 
 // returns Maze[]
 function availableMazes() {
@@ -49,6 +57,9 @@ function availableMazes() {
 function getCell(href) {
     if (!!!href) return Promise.reject( new Error("url of the cell is required"));
     
+    const cachedCell = cache.get(href);
+    if (!!cachedCell) return Promise.resolve(cachedCell);
+    
     return cj(href)
         .then(r => {
             let type = r.items[0].datum("type").value;
@@ -68,6 +79,7 @@ function getCell(href) {
                 cell.doors.push(door);
             });
             
+            cache.set(href, cell);
             return cell;
         })
         .catch(err => console.log(err)); 
