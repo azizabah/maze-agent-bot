@@ -2,65 +2,61 @@
 "use strict";
 
 const mz = require("./mazeagent.js");
-//const restify = require("restify");
+const restify = require("restify");
 const builder = require("botbuilder");
 const prompts = require("./prompts.js");
 
-const bot = new builder.TextBot(); 
+const port = process.env.mazebotPort || 53500;
+const botAppId = process.env.mazebotAppId || "test-id";
+const botAppSecret = process.env.botAppSecret || "test-secret";
+const luisAppId = process.env.luisAppId || "fb56d8cb-061b-4423-b819-030f045b1e51";
+const luisSubscriptionKey = process.env.luisSubscriptionKey || "b265ce971b9b4646824762e0b397eeed";
 
-bot.add("/", session => {
-    
-    // ending the command dialog returns to 
-    if (session.userData.stopping) {
-        session.endDialog();
-        return;
-    }
-    
-    session.send("initializing session");
-    if (!!!session.userData.currentCell) {
-        mz.availableMazes()
-        .then(mazes => mz.getCell(mazes[0].startUrl))
-        .then(cell => session.userData.currentCell = cell)
+const luisEndpoint = "https://api.projectoxford.ai/luis/v1/application?id=" + luisAppId +
+                        "&subscription-key=" + luisSubscriptionKey;
+
+const bot = new builder.BotConnectorBot({
+    appId: botAppId,
+    appSecret: botAppSecret
+}); 
+
+const exploreDialog = new builder.LuisDialog(luisEndpoint);
+exploreDialog.onBegin(session => {
+    resetCurrentCell(session)
         .then(() => session.send(prompts.intro))
-        .then(() => session.beginDialog("/explore"));
-    } else {
-        session.beginDialog("/explore");
-    }
-     
+        .then(() => listDoors(session));
 });
+exploreDialog.onDefault([builder.DialogAction.send("I'm sorry. I didn't understand you."), listDoors]);
 
-const exploreDialog = new builder.CommandDialog();
-exploreDialog.onBegin(listDoors);
+exploreDialog.on("look", listDoors);
 
-exploreDialog.matches("^north", go("north"));
-exploreDialog.matches("^south", go("south"));
-exploreDialog.matches("^east", go("east"));
-exploreDialog.matches("^west", go("west"));
-
-exploreDialog.matches("^look", listDoors);
-
-exploreDialog.matches("^quit", (session, args) => {
+exploreDialog.on("quit", (session, args) => {
    session.send(prompts.quitMessage);
    session.userData.stopping = true; 
    session.endDialog();
 });
 
-exploreDialog.matches("^help", (session) => session.send(prompts.help));
+exploreDialog.on("help", (session) => session.send(prompts.help));
 
-exploreDialog.onDefault([builder.DialogAction.send("I'm sorry. I didn't understand you."), listDoors]);
+exploreDialog.on("move", (session, args) => {
+    let direction = builder.EntityRecognizer.findEntity(args.entities, "direction");
+    if (!direction) {
+        session.send(prompts.needDirection)
+    } else {
+        //TODO - remove the indirection
+        go(direction.entity)(session);
+    }
+    
+});
 
-bot.add("/explore", exploreDialog);
+bot.add("/", exploreDialog);
 
-/*
 const server = restify.createServer();
 server.post('/api/messages', bot.verifyBotFramework(), bot.listen());
-server.listen(process.env.mazebotport || 53500, function () {
+server.listen(port, function () {
     console.log('%s listening to %s', server.name, server.url); 
 });
-*/
 
-bot.listenStdin();
-//todo - cache cells after they're retrieved
 function go(direction) {
     return (session) => {
         const door = session.userData.currentCell.doors
@@ -82,4 +78,10 @@ function listDoors(session) {
    cell.doors.forEach(door => availableDoors.push(door.direction));
    const response = prompts.availablePaths + availableDoors.join(", ");
    session.send(response);
+}
+
+function resetCurrentCell(session) {
+    return mz.availableMazes()
+    .then(mazes => mz.getCell(mazes[0].startUrl))
+    .then(cell => session.userData.currentCell = cell);
 }
