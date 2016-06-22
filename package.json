@@ -2,7 +2,7 @@
   "name": "maze-agent-bot",
   "version": "1.0.0",
   "description": "a bot for interacting with the MazeAgent service",
-  "main": "app.js",
+  "main": "src/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "tsc": "%npm_home%\\tsc"
