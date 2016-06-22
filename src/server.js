@@ -6,9 +6,9 @@ const restify = require("restify");
 const builder = require("botbuilder");
 const prompts = require("./prompts.js");
 
-const port = process.env.mazebotPort || 53500;
-const botAppId = process.env.mazebotAppId || "test-id";
-const botAppSecret = process.env.botAppSecret || "test-secret";
+const port = process.env.mazebotPort || 3978;
+const botAppId = process.env.mazebotAppId || "YourAppId";
+const botAppSecret = process.env.botAppSecret || "YourAppSecret";
 const luisAppId = process.env.luisAppId || "fb56d8cb-061b-4423-b819-030f045b1e51";
 const luisSubscriptionKey = process.env.luisSubscriptionKey || "b265ce971b9b4646824762e0b397eeed";
 
@@ -26,13 +26,12 @@ exploreDialog.onBegin(session => {
         .then(() => session.send(prompts.intro))
         .then(() => listDoors(session));
 });
-exploreDialog.onDefault([builder.DialogAction.send("I'm sorry. I didn't understand you."), listDoors]);
+exploreDialog.onDefault([builder.DialogAction.send(prompts.doNotUnderstand), listDoors]);
 
 exploreDialog.on("look", listDoors);
 
 exploreDialog.on("quit", (session, args) => {
    session.send(prompts.quitMessage);
-   session.userData.stopping = true; 
    session.endDialog();
 });
 
@@ -43,10 +42,8 @@ exploreDialog.on("move", (session, args) => {
     if (!direction) {
         session.send(prompts.needDirection)
     } else {
-        //TODO - remove the indirection
-        go(direction.entity)(session);
+        go(session, direction.entity);
     }
-    
 });
 
 bot.add("/", exploreDialog);
@@ -57,21 +54,28 @@ server.listen(port, function () {
     console.log('%s listening to %s', server.name, server.url); 
 });
 
-function go(direction) {
-    return (session) => {
-        const door = session.userData.currentCell.doors
-            .find(d => d.direction.toUpperCase() === direction.toUpperCase());
-        
-        if (door === undefined) {
-            session.send(prompts.directionNotPossible)
-        } else {
-            mz.getCell(door.href)
-            .then(cell => session.userData.currentCell = cell)
-            .then(() => listDoors(session));
-        }    
-    };
+/**
+ * move the user in the given direction if available
+ */
+function go(session, direction) {
+    const door = session.userData.currentCell.doors
+        .find(d => d.direction.toUpperCase() === direction.toUpperCase());
+    
+    if (door === undefined) {
+        session.send(prompts.directionNotPossible)
+    } else if (direction.toUpperCase() === "EXIT") {
+        session.send(prompts.success);
+        session.endDialog();
+    } else {
+        mz.getCell(door.href)
+        .then(cell => session.userData.currentCell = cell)
+        .then(() => listDoors(session));
+    }    
 }
 
+/**
+ * write the available paths to the conversation
+ */
 function listDoors(session) {
    const cell = session.userData.currentCell;
    const availableDoors = new Array(); 
@@ -80,6 +84,9 @@ function listDoors(session) {
    session.send(response);
 }
 
+/**
+ * reset the user to the start of the maze
+ */
 function resetCurrentCell(session) {
     return mz.availableMazes()
     .then(mazes => mz.getCell(mazes[0].startUrl))

@@ -32,7 +32,9 @@ const cache = new NodeCache({
     useClones: false
 });
 
-// returns Maze[]
+/**
+ * retrieve a list of available mazes from the server
+ */
 function availableMazes() {
         return cj(mazeAgentApiUrl)
             .then(mazesResponse => {
@@ -54,6 +56,11 @@ function availableMazes() {
             });
 }
 
+/**
+ * fetch the cell for the specified uri.
+ * previously seen cells are cached to reduce the number
+ * of calls to the server.
+ */
 function getCell(href) {
     if (!!!href) return Promise.reject( new Error("url of the cell is required"));
     
