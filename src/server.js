@@ -6,7 +6,7 @@ const restify = require("restify");
 const builder = require("botbuilder");
 const prompts = require("./prompts.js");
 
-const port = process.env.mazebotPort || 3978;
+const port = process.env.port || 3978;
 const botAppId = process.env.mazebotAppId || "YourAppId";
 const botAppSecret = process.env.botAppSecret || "YourAppSecret";
 const luisAppId = process.env.luisAppId || "fb56d8cb-061b-4423-b819-030f045b1e51";
@@ -49,7 +49,16 @@ exploreDialog.on("move", (session, args) => {
 bot.add("/", exploreDialog);
 
 const server = restify.createServer();
+
+// hook in the bot framework
 server.post('/api/messages', bot.verifyBotFramework(), bot.listen());
+
+// any GET returns the intro
+server.get(/.*/, restify.serveStatic({
+    "directory": __dirname + "/..",
+    "file":"index.html",
+}));
+
 server.listen(port, function () {
     console.log('%s listening to %s', server.name, server.url); 
 });
