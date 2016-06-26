@@ -6,7 +6,8 @@ const restify = require("restify");
 const builder = require("botbuilder");
 const prompts = require("./prompts.js");
 
-const port = process.env.port || 3978;
+// iisnode will set the PORT environment variable
+const port = process.env.PORT || 3978;
 const botAppId = process.env.mazebotAppId || "YourAppId";
 const botAppSecret = process.env.botAppSecret || "YourAppSecret";
 const luisAppId = process.env.luisAppId || "fb56d8cb-061b-4423-b819-030f045b1e51";

@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "a bot for interacting with the MazeAgent service",
   "main": "src/server.js",
+  "engines": {
+    "node":"6.x.x"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "tsc": "%npm_home%\\tsc"
