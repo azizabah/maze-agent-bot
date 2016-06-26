@@ -55,6 +55,10 @@ const server = restify.createServer();
 server.post('/api/messages', bot.verifyBotFramework(), bot.listen());
 
 // any GET returns the intro
+server.get("privacy", restify.serveStatic({
+    "directory": __dirname + "/..",
+    "file":"privacy.html",
+}));
 server.get(/.*/, restify.serveStatic({
     "directory": __dirname + "/..",
     "file":"index.html",
