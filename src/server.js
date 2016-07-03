@@ -21,12 +21,20 @@ const bot = new builder.BotConnectorBot({
     appSecret: botAppSecret
 }); 
 
+bot.use((session, next)=>{
+    if (!session.userData.currentCell) {
+       resetCurrentCell(session).then(next); 
+    } else {
+        next();
+    }
+});
+
 const exploreDialog = new builder.LuisDialog(luisEndpoint);
 exploreDialog.onBegin(session => {
-    resetCurrentCell(session)
-        .then(() => session.send(prompts.intro))
-        .then(() => listDoors(session));
+    session.send(prompts.intro);
+    listDoors(session);
 });
+
 exploreDialog.onDefault([builder.DialogAction.send(prompts.doNotUnderstand), listDoors]);
 
 exploreDialog.on("look", listDoors);
@@ -58,6 +66,10 @@ server.post('/api/messages', bot.verifyBotFramework(), bot.listen());
 server.get("privacy", restify.serveStatic({
     "directory": __dirname + "/..",
     "file":"privacy.html",
+}));
+server.get("tos", restify.serveStatic({
+    "directory": __dirname + "/..",
+    "file":"tos.html",
 }));
 server.get(/.*/, restify.serveStatic({
     "directory": __dirname + "/..",
