@@ -23,16 +23,21 @@ const connector = new builder.ChatConnector({
 
 const bot = new builder.UniversalBot(connector); 
 
+/**
+ * register a piece of middleware that will initialize
+ * the user's session with starting cell
+ */
 bot.use({
     botbuilder: (session, next)=> {
         if (!session.userData.currentCell) {
-        resetCurrentCell(session).then(next); 
+            resetCurrentCell(session).then(next); 
         } else {
             next();
         }
     } 
 });
 
+// this is the main dialog for moving through the maze
 const luisRecognizer = new builder.LuisRecognizer(luisEndpoint);
 const exploreDialog = new builder.IntentDialog({
     recognizers: [luisRecognizer]
@@ -49,7 +54,7 @@ exploreDialog.matches("look", listDoors);
 
 exploreDialog.matches("quit", (session, args) => {
    session.send(prompts.quitMessage);
-   session.endDialog();
+   session.replaceDialog("/nowDead");
 });
 
 exploreDialog.matches("help", (session) => session.send(prompts.help));
@@ -64,6 +69,20 @@ exploreDialog.matches("move", (session, args) => {
 });
 
 bot.dialog("/", exploreDialog);
+
+/** 
+ * when the user quits, the main dialog (/) is replaced with this one,
+ * prompting the user to restart
+ */
+bot.dialog("/nowDead", [
+    session => builder.Prompts.confirm(session, prompts.restart),
+    (session, result) => {
+        if (result.response) {
+            session.reset();
+            session.replaceDialog("/");
+        }
+    }
+] );
 
 const server = restify.createServer();
 
@@ -101,6 +120,7 @@ function go(session, direction) {
         session.send(prompts.success);
         session.endDialog();
     } else {
+        session.sendTyping();
         mz.getCell(door.href)
         .then(cell => session.userData.currentCell = cell)
         .then(() => listDoors(session));

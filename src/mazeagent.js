@@ -62,7 +62,7 @@ function availableMazes() {
  * of calls to the server.
  */
 function getCell(href) {
-    if (!!!href) return Promise.reject( new Error("url of the cell is required"));
+    if (!href) return Promise.reject( new Error("url of the cell is required"));
     
     const cachedCell = cache.get(href);
     if (!!cachedCell) return Promise.resolve(cachedCell);

@@ -9,5 +9,6 @@ module.exports = {
     needDirection: "I think you want to move but I didn't catch the direction.",
     doNotUnderstand: "I'm sorry. I didn't understand you.",
     success: "OMG! The blue sky is visible again! You've done it! You're out of the maze! Brag to your friends about your success, " +
-        "just don't tell them how you did it." 
+        "just don't tell them how you did it.",
+    restart: "You're dead. Do you want to restart?" 
 };
