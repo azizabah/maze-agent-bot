@@ -7,29 +7,42 @@ const builder = require("botbuilder");
 const prompts = require("./prompts.js");
 
 // iisnode will set the PORT environment variable
-const port = process.env.PORT || 3978;
-const botAppId = process.env.mazebotAppId || "YourAppId";
-const botAppSecret = process.env.botAppSecret || "YourAppSecret";
+const port = process.env.port || process.env.PORT || 3978;
+const botAppId = process.env.mazebotAppId || "";
+const botAppSecret = process.env.botAppSecret || "";
 const luisAppId = process.env.luisAppId || "fb56d8cb-061b-4423-b819-030f045b1e51";
 const luisSubscriptionKey = process.env.luisSubscriptionKey || "b265ce971b9b4646824762e0b397eeed";
 
 const luisEndpoint = "https://api.projectoxford.ai/luis/v1/application?id=" + luisAppId +
                         "&subscription-key=" + luisSubscriptionKey;
 
-const bot = new builder.BotConnectorBot({
+const connector = new builder.ChatConnector({
     appId: botAppId,
-    appSecret: botAppSecret
-}); 
-
-bot.use((session, next)=>{
-    if (!session.userData.currentCell) {
-       resetCurrentCell(session).then(next); 
-    } else {
-        next();
-    }
+    appPassword: botAppSecret
 });
 
-const exploreDialog = new builder.LuisDialog(luisEndpoint);
+const bot = new builder.UniversalBot(connector); 
+
+/**
+ * register a piece of middleware that will initialize
+ * the user's session with starting cell
+ */
+bot.use({
+    botbuilder: (session, next)=> {
+        if (!session.userData.currentCell) {
+            resetCurrentCell(session).then(next); 
+        } else {
+            next();
+        }
+    } 
+});
+
+// this is the main dialog for moving through the maze
+const luisRecognizer = new builder.LuisRecognizer(luisEndpoint);
+const exploreDialog = new builder.IntentDialog({
+    recognizers: [luisRecognizer]
+});
+
 exploreDialog.onBegin(session => {
     session.send(prompts.intro);
     listDoors(session);
@@ -37,16 +50,16 @@ exploreDialog.onBegin(session => {
 
 exploreDialog.onDefault([builder.DialogAction.send(prompts.doNotUnderstand), listDoors]);
 
-exploreDialog.on("look", listDoors);
+exploreDialog.matches("look", listDoors);
 
-exploreDialog.on("quit", (session, args) => {
+exploreDialog.matches("quit", (session, args) => {
    session.send(prompts.quitMessage);
-   session.endDialog();
+   session.replaceDialog("/nowDead");
 });
 
-exploreDialog.on("help", (session) => session.send(prompts.help));
+exploreDialog.matches("help", (session) => session.send(prompts.help));
 
-exploreDialog.on("move", (session, args) => {
+exploreDialog.matches("move", (session, args) => {
     let direction = builder.EntityRecognizer.findEntity(args.entities, "direction");
     if (!direction) {
         session.send(prompts.needDirection)
@@ -55,12 +68,26 @@ exploreDialog.on("move", (session, args) => {
     }
 });
 
-bot.add("/", exploreDialog);
+bot.dialog("/", exploreDialog);
+
+/** 
+ * when the user quits, the main dialog (/) is replaced with this one,
+ * prompting the user to restart
+ */
+bot.dialog("/nowDead", [
+    session => builder.Prompts.confirm(session, prompts.restart),
+    (session, result) => {
+        if (result.response) {
+            session.reset();
+            session.replaceDialog("/");
+        }
+    }
+] );
 
 const server = restify.createServer();
 
 // hook in the bot framework
-server.post('/api/messages', bot.verifyBotFramework(), bot.listen());
+server.post('/api/messages', connector.listen());
 
 // any GET returns the intro
 server.get("privacy", restify.serveStatic({
@@ -93,6 +120,7 @@ function go(session, direction) {
         session.send(prompts.success);
         session.endDialog();
     } else {
+        session.sendTyping();
         mz.getCell(door.href)
         .then(cell => session.userData.currentCell = cell)
         .then(() => listDoors(session));
